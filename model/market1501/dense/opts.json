@@ -1,0 +1,8 @@
+{
+ "model_path": "market1501",
+ "data_dir": "/home/paul/datasets/market1501/pytorch",
+ "train_all": false,
+ "batchsize": 4,
+ "erasing_p": 0.8,
+ "use_dense": true
+}
