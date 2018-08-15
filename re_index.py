@@ -4,7 +4,7 @@ import numpy as np
 import os
 from shutil import copyfile
 
-original_path='/home/paul/datasets/viper/pytorch'
+original_path='/home/paul/datasets/duke/pytorch'
 
 #copy folder tree from source to destination
 def copyfolder(src,dst):
@@ -14,11 +14,11 @@ def copyfolder(src,dst):
     for tt in files:   
         copyfile(src+'/'+tt,dst+'/'+tt)
 
-train_save_path = original_path + '/train_new'
+train_save_path = original_path + '/val_new'
 if not os.path.exists(train_save_path):
     os.mkdir(train_save_path)
 
-data_path=original_path+'/train_all'
+data_path=original_path+'/val'
 if not os.path.isdir(train_save_path):
     os.mkdir(train_save_path)
 

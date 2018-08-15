@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import scipy.io
 import torch
 import numpy as np
@@ -113,6 +115,6 @@ if multi:
         CMC = CMC + CMC_tmp
         ap += ap_tmp
         # print(i, CMC_tmp[0])
-CMC = CMC.float()
-CMC = CMC / len(query_label)  # average CMC
-print('multi Rank@1:%f Rank@5:%f Rank@10:%f mAP:%f' % (CMC[0], CMC[4], CMC[9], ap / len(query_label)))
+    CMC = CMC.float()
+    CMC = CMC / len(query_label)  # average CMC
+    print('multi Rank@1:%f Rank@5:%f Rank@10:%f mAP:%f' % (CMC[0], CMC[4], CMC[9], ap / len(query_label)))

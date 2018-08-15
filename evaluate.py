@@ -41,7 +41,8 @@ def compute_mAP(index, good_index, junk_index):
     mask = np.in1d(index, good_index)
     rows_good = np.argwhere(mask==True)
     rows_good = rows_good.flatten()
-    
+    #Rank@1:0.785036 Rank@5:0.901128 Rank@10:0.936758 Rank@20:0.957838 mAP:0.559871
+
     cmc[rows_good[0]:] = 1
     for i in range(ngood):
         d_recall = 1.0/ngood
@@ -55,7 +56,7 @@ def compute_mAP(index, good_index, junk_index):
     return ap, cmc
 
 ######################################################################
-result = scipy.io.loadmat('./plsro_result.mat')
+result = scipy.io.loadmat('./pytorch_result.mat')
 query_feature = result['query_f']
 query_cam = result['query_cam'][0]
 query_label = result['query_label'][0]
@@ -76,5 +77,5 @@ for i in range(len(query_label)):
 
 CMC = CMC.float()
 CMC = CMC/len(query_label) #average CMC
-scipy.io.savemat('resnet.mat', {'CMC' : CMC.numpy()})
+#scipy.io.savemat('resnet.mat', {'CMC' : CMC.numpy()})
 print('Rank@1:%f Rank@5:%f Rank@10:%f Rank@20:%f mAP:%f' % (CMC[0], CMC[4], CMC[9], CMC[19], ap/len(query_label)))

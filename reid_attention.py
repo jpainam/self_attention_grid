@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.serialization import load_lua
-from torchvision.utils import save_image
+
 
 class VGG_16(nn.Module):
     """
@@ -35,7 +35,7 @@ class VGG_16(nn.Module):
         self.conv_5_1 = nn.Conv2d(512, 512, 3, stride=1, padding=1)
         self.conv_5_2 = nn.Conv2d(512, 512, 3, stride=1, padding=1)
         self.conv_5_3 = nn.Conv2d(512, 512, 3, stride=1, padding=1)
-        self.conv_attention = nn.Conv2d(512, 3, 1)
+        self.conv_attention = nn.Conv2d(512, 1, 1)
         nn.init.kaiming_normal_(self.conv_attention.weight)
         self.conv_proc_detail = nn.Conv2d(512, 512, 3, stride=1, padding=1)
         nn.init.kaiming_normal_(self.conv_proc_detail.weight)
@@ -46,7 +46,7 @@ class VGG_16(nn.Module):
         self.fc8 = nn.Linear(4096, self.nlabels)
         nn.init.kaiming_normal_(self.fc8.weight)
 
-    '''def load_weights(self, path="pretrained/VGG_FACE.t7"):
+    def load_weights(self, path="pretrained/VGG_FACE.t7"):
         """ Function to load luatorch weights
 
         Args:
@@ -70,7 +70,7 @@ class VGG_16(nn.Module):
                 #     block += 1
                 #     self_layer.weight.data[...] = layer.weight.view_as(self_layer.weight)[...]
                 #     self_layer.bias.data[...] = layer.bias.view_as(self_layer.bias)[...]
-    '''
+
     def get_vgg_parameters(self):
         """ Function to obtain the vgg pretrained parameters. Useful for freezing.
 
@@ -128,23 +128,7 @@ class VGG_16(nn.Module):
         x = F.relu(self.conv_5_3(x))
         self.pool5 = F.max_pool2d(x, 2, 2)
         b, c, h, w = self.pool5.size()
-        att = self.conv_attention(self.pool5)
-        #print(att.size())
-        #att = att.view()
-        image = att.data
-        image = image.detach().cpu().numpy()
-        img = image[0]
-        import numpy as np
-        img = np.transpose(img, (2, 1, 0))
-        print(img.shape)
-        #img = img * 255
-        from PIL import Image
-        from scipy.misc import imsave
-        img = Image.fromarray(img.astype('uint8'), 'RGB')
-        img = img.resize((64, 128), Image.ANTIALIAS)
-        imsave('./output/viz.png', img)
-        print(image.shape)
-        exit(0)
+        att = self.conv_attention(self.pool5).view(b, h * w)
         return F.softmax(att, -1).view(b, 1, h, w)
 
     def crop(self, x, multiple=7):
@@ -209,7 +193,7 @@ class VGG_16(nn.Module):
         fc7 = F.dropout(fc7, 0.5, inplace=True)
         return self.fc8(fc7)
 
-    def forward(self, x1):
+    def forward(self, x1, x2):
         """ Model forward function
 
         Args:
@@ -220,33 +204,22 @@ class VGG_16(nn.Module):
 
         """
         b1, c1, h1, w1 = x1.size()
-        #b2, c2, h2, w2 = x2.size()
+        b2, c2, h2, w2 = x2.size()
         att = self.attend(x1)
-        #print(att.size())
-        ##att = att.view(att.size(0), 3, 64, 128))
-        #save_image(denorm(att.data), './attention/vggnetd.png')
-        #exit(0)
-        #if (h1, w1) != (h2, w2):
-        self.reprocess(x1)
+        if (h1, w1) != (h2, w2):
+            self.reprocess(x2)
         return self.classify(self.pool4, att)
 
 
 if __name__ == "__main__":
     import numpy as np
 
-    #im = cv2.imread('images/ak.png') - np.array([129.1863, 104.7624, 93.5940]).reshape((1, 1, 3))
-    #im2 = cv2.resize(im, (448, 448))
-    #im = im.transpose((1, 2, 0)).reshape((1, 3, 224, 224))
-    #im2 = im2.transpose((1, 2, 0)).reshape((1, 3, 448, 448))
-    #im = torch.Tensor(im).cuda()
-    #im2 = torch.Tensor(im2).cuda()
-    #model = VGG_16(nlabels=751).cuda()
-    from torchvision import models
-    model = models.vgg16(pretrained=True).cuda()
-    print(model)
-    exit(0)
-    #print(model(im, im).max())
-    #print(model(im, im2).max())
-def denorm(x):
-    out = (x + 1) / 2
-    return out.clamp(0, 1)
+    im = cv2.imread('images/ak.png') - np.array([129.1863, 104.7624, 93.5940]).reshape((1, 1, 3))
+    im2 = cv2.resize(im, (448, 448))
+    im = im.transpose((1, 2, 0)).reshape((1, 3, 224, 224))
+    im2 = im2.transpose((1, 2, 0)).reshape((1, 3, 448, 448))
+    im = torch.Tensor(im).cuda()
+    im2 = torch.Tensor(im2).cuda()
+    model = VGG_16().cuda()
+    print(model(im, im).max())
+    print(model(im, im2).max())
