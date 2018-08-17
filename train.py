@@ -2,7 +2,7 @@
 
 from __future__ import print_function, division
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 import torch
 import torch.nn as nn
@@ -27,10 +27,10 @@ import json
 # Options
 # --------
 parser = argparse.ArgumentParser(description='Training')
-parser.add_argument('--name', default='./default', type=str, help='output model name')
+parser.add_argument('--name', default='./default2', type=str, help='output model name')
 parser.add_argument('--data_dir', default='/home/paul/datasets/market1501/pytorch', type=str, help='training dir path')
 parser.add_argument('--color_jitter', action='store_true', help='use color jitter in training')
-parser.add_argument('--batchsize', default=64, type=int, help='batchsize')
+parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
 parser.add_argument('--erasing_p', default=0.8, type=float, help='Random Erasing probability, in [0,1]')
 parser.add_argument('--use_dense', action='store_true', help='use densenet')
 opt = parser.parse_args()
@@ -39,15 +39,15 @@ data_dir = opt.data_dir
 name = opt.name
 
 transform_train_list = [
-    transforms.Resize((288, 144), interpolation=3),
-    transforms.RandomCrop((256, 128)),
+    transforms.Resize((160, 64), interpolation=3),
+    #transforms.RandomCrop((256, 128)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ]
 
 transform_val_list = [
-    transforms.Resize(size=(256, 128), interpolation=3),  # Image.BICUBIC
+    transforms.Resize(size=(160, 64), interpolation=3),  # Image.BICUBIC
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ]
@@ -137,6 +137,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                 # forward
                 outputs = model(inputs)
+                try:
+                    outputs, _ = outputs
+                except ValueError:
+                    outputs = outputs
                 _, preds = torch.max(outputs.data, 1)
                 loss = criterion(outputs, labels)
 
@@ -201,24 +205,24 @@ def save_network(network, epoch_label):
 #
 # Load a pretrainied model and reset final fully connected layer.
 #
-from model import ResNetAttentionModel
-model = ResNetAttentionModel(num_class=751)
+from resnet_attention import ResNetAttention
+model = ResNetAttention(num_class=751)
 
 if use_gpu:
     model = model.cuda()
 
 criterion = nn.CrossEntropyLoss()
 
-#ignored_params = list(map(id, model.model.fc.parameters())) + list(map(id, model.classifier.parameters()))
-#base_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
-'''optimizer_ft = optim.SGD([
+ignored_params = list(map(id, model.model.fc.parameters())) + list(map(id, model.classifier.parameters()))
+base_params = filter(lambda p: id(p) not in ignored_params, model.parameters())
+optimizer_ft = optim.SGD([
     {'params': base_params, 'lr': 0.01},
     {'params': model.model.fc.parameters(), 'lr': 0.1},
     {'params': model.classifier.parameters(), 'lr': 0.1}
 ], weight_decay=5e-4, momentum=0.9, nesterov=True)
-'''
+
 # Decay LR by a factor of 0.1 every 40 epochs
-optimizer_ft = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4, nesterov=True)
+#optimizer_ft = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4, nesterov=True)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=30, gamma=0.1)
 
 ######################################################################
@@ -239,4 +243,4 @@ with open('%s/opts.json' % dir_name, 'w') as fp:
 if __name__ == "__main__":
     #model = nn.DataParallel(model)
     model = train_model(model, criterion, optimizer_ft, exp_lr_scheduler,
-                        num_epochs=62)
+                        num_epochs=201)

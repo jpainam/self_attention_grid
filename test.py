@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function, division
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import argparse
 import torch
 import torch.nn as nn
@@ -15,7 +15,7 @@ from residual_attention_network import ResidualAttentionModel
 
 ######################################################################
 # Options
-# python test.py --model_path ran/model_39.pth
+# python test.py --model_path default/model_39.pth
 # --------
 parser = argparse.ArgumentParser(description='Training')
 parser.add_argument('--model_path', default='model_best', type=str, help='Model path')
@@ -29,7 +29,7 @@ test_dir = opt.test_dir
 #torch.cuda.set_device(int(os.environ["CUDA_VISIBLE_DEVICES"]))
 num_class = 751
 data_transforms = transforms.Compose([
-    transforms.Resize((256, 128), interpolation=3),
+    transforms.Resize((160, 64), interpolation=3),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
@@ -123,6 +123,7 @@ mquery_cam, mquery_label = get_id(mquery_path)
 # Load Collected data Trained model
 print('-------test-----------')
 from resnet_attention import ResNetAttention
+from model import ResNetAttentionModel
 model_structure = ResNetAttention(num_class)
 
 model = load_network(model_structure)

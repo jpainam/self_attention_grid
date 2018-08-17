@@ -25,6 +25,30 @@ def weights_init_classifier(m):
     if classname.find('Linear') != -1:
         init.normal_(m.weight.data, std=0.001)
         init.constant_(m.bias.data, 0.0)
+class ClassBlock(nn.Module):
+    def __init__(self, input_dim, class_num, dropout=True, relu=True, num_bottleneck=512):
+        super(ClassBlock, self).__init__()
+        add_block = []
+        add_block += [nn.Linear(input_dim, num_bottleneck)]
+        add_block += [nn.BatchNorm1d(num_bottleneck)]
+        if relu:
+            add_block += [nn.LeakyReLU(0.1)]
+        if dropout:
+            add_block += [nn.Dropout(p=0.5)]
+        add_block = nn.Sequential(*add_block)
+        add_block.apply(weights_init_kaiming)
+
+        classifier = []
+        classifier += [nn.Linear(num_bottleneck, class_num)]
+        classifier = nn.Sequential(*classifier)
+        classifier.apply(weights_init_classifier)
+
+        self.add_block = add_block
+        self.classifier = classifier
+    def forward(self, x):
+        x = self.add_block(x)
+        x = self.classifier(x)
+        return x
 
 # Define the ResNet50-based Model
 class ResNetAttentionModel(nn.Module):
@@ -35,59 +59,58 @@ class ResNetAttentionModel(nn.Module):
         # avg pooling to global pooling
         model_ft.avgpool = nn.AdaptiveAvgPool2d((1,1))
         self.model = model_ft
-        self.fc1 = nn.Sequential(
-            nn.Linear(2048, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5)
-        )
-        self.fc1.apply(weights_init_kaiming)
-        self.fc2 = nn.Linear(2048, num_class)
+        self.classifier = ClassBlock(2048, num_class)
 
         # conv attention for layer 1 (256x56x56)
-        self.conv_att1 = nn.Conv2d(64, 1, 1)
+        self.conv_att1 = nn.Sequential(
+            nn.Conv2d(256, 1, 1),
+            nn.BatchNorm2d(1),
+            nn.ReLU(inplace=True)
+        )
         # conv attention for layer 2 (512x28x28)
         #self.conv_att2 = nn.Conv2d(256, 1, 1)
         # conv attention for layer 3 (512x28x28)
-        self.conv_att2 = nn.Conv2d(512, 1, 1)
+        self.conv_att2 = nn.Sequential(
+            nn.Conv2d(512, 1, 1),
+            nn.BatchNorm2d(1),
+            nn.ReLU(inplace=True)
+        )
         # conv attention for layer 3 (1024x14x14)
-        self.conv_att3 = nn.Conv2d(2048, 1, 1)
+        self.conv_att3 = nn.Sequential(
+            nn.Conv2d(1024, 1, 1),
+            nn.BatchNorm2d(1),
+            nn.ReLU(inplace=True)
+        )
 
     def attend(self, attention, x):
         pool = F.max_pool2d(x, 2, 2)
         b, c, h, w = pool.size()
         att = attention(pool).view(b, 1 * h * w)
-        #att = nn.Tanh(att)
-        return F.softmax(att, -1).view(b, 1, h, w)
+        att = F.upsample(att.view(b, 1, h, w), scale_factor=2, mode='bilinear', align_corners=True)
+        b, c, h, w = att.size()
+        att = F.softmax(att.view(b, 1 * h * w), -1)
+        return att.view(b, 1, h, w)
 
     def forward(self, x):
+        b, c, h, w = x.size()
         x = self.model.conv1(x)
         x = self.model.bn1(x)
         x = self.model.relu(x)
-        att1 = self.attend(self.conv_att1, x)
         x = self.model.maxpool(x)
-
         x = self.model.layer1(x)
+        att1 = self.attend(self.conv_att1, x)
         x = x * att1
 
         x = self.model.layer2(x)
-        att2 = self.attend(self.conv_att2, x)
         x = self.model.layer3(x)
-
-        x = x * att2
-
-        x = self.model.layer4(x)
-
         att3 = self.attend(self.conv_att3, x)
-        x = F.adaptive_avg_pool2d(x, (4, 2))
         x = x * att3
+        x = self.model.layer4(x)
         b, c, h, w = x.size()
         x = self.model.avgpool(x)
-        x = x.view(x.size(0), -1)
-        #x = F.normalize(x.view(b, c, -1).sum(-1), 2, -1)
+        x = F.normalize(x.view(b, c, -1).sum(-1), 2, -1)
         # classifier
-        x = self.fc1(x)
-        x = self.fc2(x)
+        x = self.classifier(x)
         return x
 
 import cv2

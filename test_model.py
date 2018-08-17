@@ -122,15 +122,16 @@ mquery_cam, mquery_label = get_id(mquery_path)
 ######################################################################
 # Load Collected data Trained model
 print('-------test-----------')
-from resnet_attention import ResNetAttention
-model_structure = ResNetAttention(num_class)
+from model import ResNetAttentionModel
+model_structure = ResNetAttentionModel(num_class)
 
 model = load_network(model_structure)
 
 # Remove the final fc layer and classifier layer
 
 model.model.fc = nn.Sequential()
-model.classifier = nn.Sequential()
+model.fc2 = nn.Sequential()
+model.fc1 = nn.Sequential()
 
 
 # Change to test mode
