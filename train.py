@@ -22,7 +22,7 @@ import os
 from resnet_attention import ResNetAttention
 from random_erasing import RandomErasing
 import json
-from AverageMeter import AverageMeter
+
 
 ######################################################################
 # Options
