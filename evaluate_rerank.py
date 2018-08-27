@@ -82,4 +82,5 @@ for i in range(len(query_label)):
 
 CMC = CMC.float()
 CMC = CMC/len(query_label) #average CMC
-print('top1:%f top5:%f top10:%f mAP:%f'%(CMC[0],CMC[4],CMC[9],ap/len(query_label)))
+print('top1:%f top5:%f top10:%f top20:%f mAP:%f' %
+      (CMC[0],CMC[4],CMC[9], CMC[19], ap/len(query_label)))
