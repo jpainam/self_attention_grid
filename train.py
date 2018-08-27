@@ -2,7 +2,7 @@
 
 from __future__ import print_function, division
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import argparse
 import torch
 import torch.nn as nn
@@ -22,15 +22,16 @@ import os
 from resnet_attention import ResNetAttention
 from random_erasing import RandomErasing
 import json
+from AverageMeter import AverageMeter
 
 ######################################################################
 # Options
 # --------
 parser = argparse.ArgumentParser(description='Training')
-parser.add_argument('--name', default='./default2', type=str, help='output model name')
+parser.add_argument('--name', default='./market_0', type=str, help='output model name')
 parser.add_argument('--data_dir', default='/home/paul/datasets/market1501/pytorch', type=str, help='training dir path')
 parser.add_argument('--color_jitter', action='store_true', help='use color jitter in training')
-parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
+parser.add_argument('--batchsize', default=64, type=int, help='batchsize')
 parser.add_argument('--erasing_p', default=0.8, type=float, help='Random Erasing probability, in [0,1]')
 parser.add_argument('--use_dense', action='store_true', help='use densenet')
 opt = parser.parse_args()
@@ -92,20 +93,14 @@ use_gpu = torch.cuda.is_available()
 # In the following, parameter ``scheduler`` is an LR scheduler object from
 # ``torch.optim.lr_scheduler``.
 
-y_loss = {}  # loss history
-y_loss['train'] = []
-y_loss['val'] = []
-y_err = {}
-y_err['train'] = []
-y_err['val'] = []
-
-
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
+    losses = {'val': [], 'train': []}
+    accs = {'val': [], 'train': []}
 
     best_model_wts = model.state_dict()
     best_acc = 0.0
-
+    save_path = os.path.join('./model', name)
     for epoch in range(1, num_epochs + 1):
         print('Epoch {}/{}'.format(epoch, num_epochs))
         print('-' * 10)
@@ -151,17 +146,16 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                 # statistics
                 running_loss += loss.item()
-                print("Current Loss {}".format(loss.item()))
-                running_corrects += torch.sum(preds == labels.data)
+                #print("Current Loss {}".format(loss.item()))
+                running_corrects += (preds == labels).double().sum().item()
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects / dataset_sizes[phase]
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 phase, epoch_loss, epoch_acc))
-
-            y_loss[phase].append(epoch_loss)
-            y_err[phase].append(1.0 - epoch_acc)
+            accs[phase].append(epoch_acc)
+            losses[phase].append(epoch_loss)
             # deep copy the model
             if phase == 'val':
                 last_model_wts = model.state_dict()
@@ -169,7 +163,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 save_network(model, epoch)
                 # draw_curve(epoch)
 
-        print()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -179,6 +172,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     # load best model weights
     model.load_state_dict(last_model_wts)
     save_network(model, 'last')
+    json.dump(losses, open(os.path.join(save_path, 'losses.json'), 'w'))
+    json.dump(accs, open(os.path.join(save_path, 'accs.json'), 'w'))
     return model
 
 
