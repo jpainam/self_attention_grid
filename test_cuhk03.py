@@ -5,7 +5,7 @@ import numpy as np
 
 import os
 import data_manager
-from model import ft_net, ft_net_dense
+from resnet_attention import ResNetAttention
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -15,7 +15,7 @@ from dataset_loader import ImageDataset
 
 import argparse
 parser = argparse.ArgumentParser(description='Training')
-parser.add_argument('--model_path', default='resnet', type=str, help='save model path')
+parser.add_argument('--model_path', default='cuhk03', type=str, help='save model path')
 parser.add_argument('--batchsize', default=32, type=int, help='batchsize')
 parser.add_argument('--use_dense', action='store_true', help='use densenet')
 parser.add_argument('--n_classe', default=1367, help='n classes')
@@ -78,14 +78,14 @@ def test(model, queryloader, galleryloader, use_gpu, ranks=[1, 5, 10, 20]):
     result = {'distmat':distmat, 'q_pids': q_pids, 'g_pids':g_pids,
               'q_camids':q_camids, 'g_camids': g_camids,
               'query_feature': qf.numpy(), 'gallery_feature': gf.numpy()}
-    print(qf.numpy())
-    print(gf.numpy())
-    scipy.io.savemat('./result.mat', result)
+    # print(qf.numpy())
+    # print(gf.numpy())
+    scipy.io.savemat('./result_cuhk03.mat', result)
 
 
 
 def load_network(network):
-    save_path = os.path.join(opt.model_path)
+    save_path = os.path.join('./model', opt.model_path)
     network.load_state_dict(torch.load(save_path))
     return network
 
@@ -96,16 +96,14 @@ if __name__ == '__main__':
 
     use_gpu = torch.cuda.is_available()
     data_transforms = transforms.Compose([
-        transforms.Resize((288, 144), interpolation=3),
+        transforms.Resize((160, 64), interpolation=3),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
     ])
 
-    if opt.use_dense:
-        model_structure = ft_net_dense(n_classe)
-    else:
-        model_structure = ft_net(n_classe)
+
+    model_structure = ResNetAttention(n_classe)
     model = load_network(model_structure)
     # Change to test mode
     model = model.eval()
@@ -113,7 +111,7 @@ if __name__ == '__main__':
         model = model.cuda()
 
     dataset = data_manager.init_img_dataset(
-        root=opt.dataset, name='cuhk03', split_id=0, cuhk03_classic_split=True)
+        root=opt.dataset, name='cuhk03', split_id=5, cuhk03_classic_split=True)
 
     queryloader = DataLoader(
         ImageDataset(dataset.query, transform=data_transforms),
