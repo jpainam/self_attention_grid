@@ -7,7 +7,7 @@ import scipy.io
 def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, N=100):
     """Evaluation with cuhk03 metric
     Key: one image for each gallery identity is randomly sampled for each query identity.
-    Random sampling is performed N times (default: N=100).
+    Random sampling is performed N times (market: N=100).
     """
     num_q, num_g = distmat.shape
     if num_g < max_rank:
@@ -75,7 +75,7 @@ def eval_cuhk03(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, N=100):
 
 
 if __name__ == '__main__':
-    result = scipy.io.loadmat('./result.mat')
+    result = scipy.io.loadmat('./result_cuhk03.mat')
     distmat = result['distmat']
     q_pids = np.squeeze(result['q_pids'])
     g_pids = np.squeeze(result['g_pids'])
@@ -84,4 +84,4 @@ if __name__ == '__main__':
     cmc, mAP = eval_cuhk03(distmat, q_pids=q_pids, g_pids=g_pids,
                            q_camids=q_camids, g_camids=g_camids, max_rank=len(g_pids))
     print('Rank@1:%f Rank@5:%f Rank@10:%f Rank@20:%f mAP:%f' % (cmc[0], cmc[4], cmc[9], cmc[19], mAP))
-    scipy.io.savemat('resnet.mat', {'CMC': cmc})
+    #scipy.io.savemat('resnet.mat', {'CMC': cmc})
