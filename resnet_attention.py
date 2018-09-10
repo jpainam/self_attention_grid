@@ -75,13 +75,13 @@ class ResNetAttention(nn.Module):
         )
         #nn.init.kaiming_normal_(self.conv_attention.weight)
         self.conv_attention.apply(weights_init_kaiming)
-        self.conv_proc_detail = nn.Sequential(
-            nn.Conv2d(2048, 2048, 3, stride=1, padding=1),
-            nn.BatchNorm2d(2048),
-            nn.ReLU(inplace=True)
-        )
+        #self.conv_proc_detail = nn.Sequential(
+        #    nn.Conv2d(2048, 2048, 3, stride=1, padding=1),
+        #    nn.BatchNorm2d(2048),
+        #    nn.ReLU(inplace=True)
+        #)
         #nn.init.kaiming_normal_(self.conv_proc_detail.weight)
-        self.conv_proc_detail.apply(weights_init_kaiming)
+        #self.conv_proc_detail.apply(weights_init_kaiming)
 
 
     def reprocess(self, x):
